@@ -1,0 +1,543 @@
+openapi: 3.0.0
+info:
+  title: API de Red Social Katty
+  version: 1.0.0
+  description: Una API simple para una red social con funcionalidades de usuarios, mensajes y seguidores.
+
+servers:
+  - url: http://localhost:3000/api
+    description: Servidor de desarrollo
+
+tags:
+  - name: Usuarios
+    description: Operaciones relacionadas con los usuarios.
+  - name: Autenticación
+    description: Inicio y cierre de sesión..
+  - name: Mensajes
+    description: Operaciones para crear y consultar mensajes.
+  - name: Seguidores
+    description: Rutas para gestionar las relaciones de seguimiento.
+
+paths:
+  /usuarios:
+    post:
+      tags:
+        - Usuarios
+      summary: Crear un nuevo usuario
+      operationId: crearUsuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsuarioCrear'
+      responses:
+        '201':
+          description: Usuario creado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+        '400':
+          description: Error en la validación de los datos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: El correo o nombre de usuario ya existe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /login:
+    post:
+      tags:
+        - Autenticación
+      summary: Iniciar sesión de usuario
+      operationId: iniciarSesion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credenciales'
+      responses:
+        '200':
+          description: Inicio de sesión exitoso. El token se guarda en una cookie.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Inicio de sesión exitoso
+        '401':
+          description: Credenciales inválidas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /logout:
+    get:
+      tags:
+        - Autenticación
+      summary: Cerrar sesión
+      operationId: cerrarSesion
+      responses:
+        '200':
+          description: Sesión cerrada correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Sesión cerrada correctamente
+  
+  /usuarios/mi-perfil:
+    delete:
+      tags:
+        - Usuarios
+      summary: Eliminar el perfil del usuario autenticado
+      operationId: eliminarMiPerfil
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil eliminado correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Tu perfil ha sido eliminado correctamente
+        '403':
+          description: Token no proporcionado o inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /usuarios/nombre/{nombre_usuario}:
+    get:
+      tags:
+        - Usuarios
+      summary: Obtener información de un usuario por nombre
+      operationId: obtenerUsuarioPorNombre
+      parameters:
+        - name: nombre_usuario
+          in: path
+          required: true
+          description: Nombre del usuario a buscar.
+          schema:
+            type: string
+            example: 'Prueba12'
+      responses:
+        '200':
+          description: Usuario encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuario'
+        '404':
+          description: Usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /mensajes:
+    post:
+      tags:
+        - Mensajes
+      summary: Crear un nuevo mensaje
+      operationId: crearMensaje
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MensajeCrear'
+      responses:
+        '201':
+          description: Mensaje creado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensajeCompleto'
+        '403':
+          description: No autorizado. Token no proporcionado o inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /mensajes/ultimos:
+    get:
+      tags:
+        - Mensajes
+      summary: Obtener los 10 mensajes más recientes de la aplicación
+      operationId: obtenerUltimosMensajes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de los 10 mensajes más recientes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MensajeConUsuario'
+        '403':
+          description: Token no proporcionado o inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /mensajes/usuario/{nombre_usuario}:
+    get:
+      tags:
+        - Mensajes
+      summary: Obtener mensajes de un usuario
+      operationId: obtenerMensajesPorUsuario
+      parameters:
+        - name: nombre_usuario
+          in: path
+          required: true
+          description: Nombre del usuario cuyos mensajes se quieren obtener.
+          schema:
+            type: string
+            example: 'Prueba12'
+      responses:
+        '200':
+          description: Lista de mensajes.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MensajeBase'
+        '404':
+          description: Usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /mensajes/buscar:
+    get:
+      tags:
+        - Mensajes
+      summary: Buscar mensajes por coincidencia de texto
+      operationId: buscarMensajes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Término de búsqueda para el contenido de los mensajes.
+          schema:
+            type: string
+            example: 'hola mundo'
+      responses:
+        '200':
+          description: Lista de mensajes que coinciden con la búsqueda.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MensajeConUsuario'
+        '400':
+          description: Parámetro de búsqueda "q" no proporcionado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /seguir:
+    post:
+      tags:
+        - Seguidores
+      summary: Seguir a otro usuario
+      operationId: seguirUsuario
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Seguir'
+      responses:
+        '200':
+          description: Se ha seguido al usuario.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Ahora sigues a Prueba16
+        '400':
+          description: Ya seguías a este usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Usuario a seguir no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Seguidores
+      summary: Dejar de seguir a un usuario
+      operationId: dejarDeSeguir
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Seguir'
+      responses:
+        '200':
+          description: Dejaste de seguir al usuario.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensaje:
+                    type: string
+                    example: Dejaste de seguir a Prueba16
+        '400':
+          description: No seguías a este usuario.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Usuario a dejar de seguir no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /seguidores/siguiendo/{nombre_usuario}:
+    get:
+      tags:
+        - Seguidores
+      summary: Ver a quién sigue un usuario específico.
+      operationId: verSeguidos
+      parameters:
+        - name: nombre_usuario
+          in: path
+          required: true
+          description: El nombre del usuario para ver a quién sigue.
+          schema:
+            type: string
+            example: 'Prueba12'
+      responses:
+        '200':
+          description: Lista de usuarios a los que sigue.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    nombre_usuario:
+                      type: string
+                      example: 'usuario_seguido_1'
+                    created_at:
+                      type: string
+                      example: '2023-10-27T10:00:00.000Z'
+        '404':
+          description: Usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /mensajes/seguidos/{nombre_usuario}:
+    get:
+      tags:
+        - Mensajes
+        - Seguidores
+      summary: Obtener mensajes de los usuarios seguidos por otro usuario.
+      operationId: mensajesDeSeguidos
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: nombre_usuario
+          in: path
+          required: true
+          description: Nombre del usuario cuyos seguidos se quieren ver.
+          schema:
+            type: string
+            example: 'Prueba12'
+      responses:
+        '200':
+          description: Lista de mensajes de los usuarios seguidos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MensajeConUsuario'
+        '404':
+          description: Usuario no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Token no proporcionado o inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    UsuarioCrear:
+      type: object
+      required:
+        - correo
+        - contrasena
+        - nombre_usuario
+      properties:
+        correo:
+          type: string
+          example: 'ejemplo@correo.com'
+        contrasena:
+          type: string
+          example: 'password123'
+        nombre_usuario:
+          type: string
+          example: 'ejemplo_usuario'
+
+    Credenciales:
+      type: object
+      required:
+        - correo
+        - contrasena
+      properties:
+        correo:
+          type: string
+          example: 'ejemplo@correo.com'
+        contrasena:
+          type: string
+          example: 'password123'
+
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        correo:
+          type: string
+          example: 'ejemplo@correo.com'
+        nombre_usuario:
+          type: string
+          example: 'ejemplo_usuario'
+        created_at:
+          type: string
+          example: '2023-10-27T10:00:00.000Z'
+
+    MensajeCrear:
+      type: object
+      required:
+        - contenido
+      properties:
+        contenido:
+          type: string
+          example: 'Hola, este es un mensaje de prueba.'
+
+    MensajeCompleto:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        usuario_id:
+          type: integer
+          example: 1
+        contenido:
+          type: string
+          example: 'Hola, este es un mensaje de prueba.'
+        created_at:
+          type: string
+          example: '27-10-23 10:00:00'
+
+    MensajeBase:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        contenido:
+          type: string
+          example: 'Este es el mensaje.'
+        fecha_creacion:
+          type: string
+          example: '2023-10-27T10:00:00.000Z'
+    
+    MensajeConUsuario:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        contenido:
+          type: string
+          example: 'Este es el mensaje.'
+        fecha_creacion:
+          type: string
+          example: '2023-10-27T10:00:00.000Z'
+        nombre_usuario:
+          type: string
+          example: 'ejemplo_usuario'
+
+    Seguir:
+      type: object
+      required:
+        - seguido
+      properties:
+        seguido:
+          type: string
+          example: 'usuario_a_seguir'
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: 'Mensaje de error descriptivo.'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Token de autenticación JWT. Debe ser proporcionado en las cookies.'
