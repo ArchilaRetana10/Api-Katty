@@ -59,3 +59,10 @@ CarpetaProyecto/
 **Endpoint**
 Si te gustaria ver como funciona entra al archivo AQUI.yaml y veras como utilizar cada uno de los metodos.
 
+**Como inicializarla**
+-Abre el git bash y navega hasta la carpeta de tu proyecto
+-Inicia la base de datos en este caso será por medio de Docker:
+    docker run --name db-container -e POSTGRES_PASSWORD=password -e POSTGRES_USER=user -e POSTGRES_DB=db -p 5432:5432 -d postgres:latest
+-Inicia la api con node intalando 
+  npm install
+  npm start
